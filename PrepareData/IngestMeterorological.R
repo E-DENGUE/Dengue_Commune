@@ -3,7 +3,7 @@ library(tidyverse)
 library(pbapply)
 
 #Read in custom functions
-all_functions <- list.files('../R/functions', full.names=T) 
+all_functions <- list.files('./functions', full.names=T) 
 lapply(all_functions, source)  #Read in all functions
 
 #List ll files in the staging folder
