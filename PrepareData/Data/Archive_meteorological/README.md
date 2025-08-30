@@ -1,0 +1,1 @@
+Raw daily meterological data by commune are moved here after processing. 1 file per month
