@@ -2,3 +2,5 @@
 .Rhistory
 .RData
 .Ruserdata
+PrepareData/Data/Archive_meteorological/*.csv
+PrepareData/Data/Staging_meteorological/*.csv

@@ -1,9 +1,6 @@
-#This script reads in 
-
 # Load required library
 library(tidyverse)
 library(pbapply)
-library(arrow)
 
 #Read in custom functions
 all_functions <- list.files('../R/functions', full.names=T) 
