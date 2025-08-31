@@ -67,7 +67,7 @@ g <- inla.read.graph("../Data/MDR.graph.commune")
 
 # Create comprehensive ID mapping key
 id_mapping_key <- data.frame(
-  inla_idx = 1:nrow(shp_clean),                    # INLA uses 1-based indexing
+  fcode = 1:nrow(shp_clean),                    # INLA uses 1-based indexing
   l2_code = shp_clean$l2_code,                     # Original region codes
   original_row = which(!1:nrow(shp) %in% islands), # Original row in shapefile
   neighbor_count = card(nb_clean),                  # Number of neighbors
@@ -77,7 +77,7 @@ id_mapping_key <- data.frame(
 vroom::vroom_write(id_mapping_key,'../Data/inla_id_key.csv')
 
 # Add the INLA index to the clean shapefile
-shp_clean$inla_idx <- id_mapping_key$inla_idx
+shp_clean$fcode <- id_mapping_key$fcode
 
 saveRDS(shp_clean,'../Data/inla_shp_file.rds')
 

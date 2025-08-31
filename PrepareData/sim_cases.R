@@ -33,7 +33,7 @@ temperature_data <- vroom::vroom('./Data/meteorological.csv.gz') %>%
   ungroup() %>%
   select(date, commune_id, temp3) %>%
   right_join(id_key, by = c('commune_id' = 'l2_code')) %>%
-  filter(!is.na(inla_idx))
+  filter(!is.na(fcode))
 
 # Read in neighbors
 g <- inla.read.graph("../Data/MDR.graph.commune")
@@ -51,12 +51,12 @@ params <- list(
 
 # Create base data frame
 sim_data <- expand.grid(
-  inla_idx = 1:n_regions,
+  fcode = 1:n_regions,
   time_idx = 1:n_months
 ) %>%
   left_join(time_df, by = "time_idx") %>%
-  left_join(temperature_data, by = c("date", "inla_idx")) %>%
-  arrange(inla_idx, time_idx) %>%
+  left_join(temperature_data, by = c("date", "fcode")) %>%
+  arrange(fcode, time_idx) %>%
   filter(date >= '2010-01-01')
 
 # Add harmonic terms and pre-allocate columns
@@ -74,7 +74,7 @@ sim_data <- sim_data %>%
 # Create lookup matrix for efficiency
 region_time_matrix <- matrix(NA, nrow = n_regions, ncol = n_months)
 for(i in 1:nrow(sim_data)) {
-  region <- sim_data$inla_idx[i]
+  region <- sim_data$fcode[i]
   time <- sim_data$time_idx[i]
   region_time_matrix[region, time] <- i
 }
@@ -165,6 +165,7 @@ sim_data <- sim_data %>%
     time_scaled = as.numeric(scale(time_idx))
   )
 
+
 # Summary statistics
 cat("\n=== SIMULATION SUMMARY ===\n")
 cat("Total observations:", nrow(sim_data), "\n")
@@ -185,7 +186,7 @@ print(summary_stats)
 # Verify the lag structure with a sample
 cat("\nVerifying lag structure for first region:\n")
 verification <- sim_data %>%
-  filter(inla_idx == 1) %>%
+  filter(fcode == 1) %>%
   select(date, time_idx, N_cases, neighbor_cases_lag3, own_cases_lag3) %>%
   head(10)
 print(verification)
