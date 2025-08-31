@@ -3,9 +3,24 @@ library(sf)
 library(spdep)
 library(INLA)
 
+#the new MDR boundaries include these regions:
+#"Tỉnh An Giang"         
+#"Tỉnh Đồng Tháp"        
+#"Tỉnh Vĩnh Long"       
+#"Thành phố Cần Thơ" 
+#"Tỉnh Cà Mau"          
+
+provinces_keep <- c("Tỉnh An Giang" ,        
+  "Tỉnh Đồng Tháp",        
+  "Tỉnh Vĩnh Long",       
+  "Thành phố Cần Thơ", 
+  "Tỉnh Cà Mau" )
+
 # Read and prepare data
 shp <- st_read("./Data/Staging_shapefiles/svn_admin_boundary_level2_2025.geojson")
 shp <- st_make_valid(shp)
+shp <- shp %>%
+  filter(l1_name_loc %in% provinces_keep)
 
 # Store original data for reference
 original_data <- data.frame(
@@ -46,8 +61,9 @@ if(length(islands) > 0) {
 
 # Create final INLA graph
 nb_clean <- poly2nb(shp_clean, queen = TRUE)
-nb2INLA("../Data/MDR.graph", nb_clean)
-g <- inla.read.graph("../Data/MDR.graph")
+nb2INLA("../Data/MDR.graph.commune", nb_clean)
+
+g <- inla.read.graph("../Data/MDR.graph.commune")
 
 # Create comprehensive ID mapping key
 id_mapping_key <- data.frame(
@@ -85,3 +101,9 @@ if(nrow(removed_islands) > 0) {
 } else {
   cat("No islands were removed\n")
 }
+
+
+# Plot final result
+plot(st_geometry(shp_clean), border = 'grey', main = "Clean Adjacency Graph")
+plot(nb_clean, coords = st_coordinates(st_centroid(shp_clean)), 
+     col = "red", add = TRUE, lwd = 1)
