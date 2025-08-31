@@ -5,11 +5,11 @@ inla_spacetime_mod <- function(vintage_date, modN, formula1='y ~ -1 +  X +   f(t
   
   c1 <- d2 %>%
     filter( date>='2004-09-01')%>%
-    left_join(spat_IDS, by='fcode') %>%
     arrange(fcode, date) %>%
     mutate( t = lubridate::interval(min(date), date) %/% months(1) + 1) %>%
     group_by(fcode) %>%
     mutate(fcode2=fcode,
+           fcodeID = fcode,
            Dengue_fever_rates = obs_dengue_cases / pop_total * 100000,
            log_df_rate = log((obs_dengue_cases + 1) / pop_total * 100000),
            log_pop_total = log(pop_total / 100000),
@@ -44,19 +44,13 @@ inla_spacetime_mod <- function(vintage_date, modN, formula1='y ~ -1 +  X +   f(t
       time_id4= t) %>%
     arrange(date,fcodeID) %>% #SORT FOR SPACE_TIME
     mutate(fcodeIDpad=str_pad(fcodeID, 3, pad = "0", side='left'),
-           timeIDpad=str_pad(time_id1, 5, pad = "0", side='left'),
-           Population_density= scale(pop_density),
+           timeIDpad=str_pad(time_id1, 5, pad = "0", side='left')
     )
   
   c1$fcodeID<- as.numeric(c1$fcodeID)
 
   
   form2 <- as.formula (formula1)
-  
-  # form2 <- as.formula(y ~ f(t, group = fcodeID2, model = "ar1", 
-  # hyper = list(theta1 = list(prior = "loggamma", param = c(3, 
-  #    2)))))    
-  
   
   #nbinomial or poisson
   offset1 <- c1$offset1

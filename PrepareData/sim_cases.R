@@ -25,13 +25,13 @@ cat("Simulating data for", n_regions, "regions and", n_months, "months\n")
 
 # Load and process temperature data
 temperature_data <- vroom::vroom('./Data/meteorological.csv.gz') %>%
-  select(monthdate, commune_id, t2m_avg) %>%
+  dplyr::select(monthdate, commune_id, t2m_avg) %>%
   mutate(date = as.Date(monthdate)) %>%
   arrange(commune_id, date) %>%
   group_by(commune_id) %>%
   mutate(temp3 = lag(t2m_avg, 3)) %>%  # 3-month lag
   ungroup() %>%
-  select(date, commune_id, temp3) %>%
+  dplyr::select(date, commune_id, temp3) %>%
   right_join(id_key, by = c('commune_id' = 'l2_code')) %>%
   filter(!is.na(fcode))
 
@@ -69,7 +69,8 @@ sim_data <- sim_data %>%
     owobs_dengue_cases_lag3 = 0,       # Cases in own region 3 months ago
     log_lambda = NA_real_,
     lambda = NA_real_
-  )
+  )%>%
+  mutate(pop_total = 100000)
 
 # Create lookup matrix for efficiency
 region_time_matrix <- matrix(NA, nrow = n_regions, ncol = n_months)
@@ -130,16 +131,16 @@ for(t in 1:n_months) {
       params$beta_cos * current_row$cos_term +
       params$beta_sin * current_row$sin_term +
       params$beta_temperature * current_row$temp3 / 10 +
-      params$beta_spatial * neighbor_cases_lag3 / 10 +
-      params$beta_temporal * owobs_dengue_cases_lag3 / 10
+      params$beta_spatial * log(neighbor_cases_lag3+1) / 10 +
+      params$beta_temporal * log(owobs_dengue_cases_lag3+1) / 10
     
     # Handle missing temperature data
     if(is.na(log_lambda)) {
       log_lambda <- params$alpha_region[region] +
         params$beta_cos * current_row$cos_term +
         params$beta_sin * current_row$sin_term +
-        params$beta_spatial * neighbor_cases_lag3 / 10 +
-        params$beta_temporal * owobs_dengue_cases_lag3 / 10
+        params$beta_spatial * log(neighbor_cases_lag3+1) / 10 +
+        params$beta_temporal * log(owobs_dengue_cases_lag3+1) / 10
     }
     
     # Calculate lambda and simulate cases
@@ -163,8 +164,7 @@ sim_data <- sim_data %>%
     owobs_dengue_cases_lag3_std = as.numeric(scale(owobs_dengue_cases_lag3)),
     time_linear = time_idx,
     time_scaled = as.numeric(scale(time_idx))
-  ) %>%
-  mutate(pop_total = 100000)
+  ) 
 
 # Summary statistics
 cat("\n=== SIMULATION SUMMARY ===\n")
@@ -194,4 +194,4 @@ print(verification)
 # Save results
 vroom::vroom_write(sim_data, "../Data/simulated_spatio_temporal_data_with_temp.csv.gz")
 
-sim_data
+

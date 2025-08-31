@@ -9,7 +9,7 @@ mod1 <- 'obs_dengue_cases_hold ~ lag3_y+
 
 mod2<- 'obs_dengue_cases_hold~   lag3_y + 
                             f(fcodeID,
-                                   model="besag",
+                                   model="bym2",
                                    constr= TRUE,
                                    graph=MDR.adj,
                                     hyper = hyper.besag ,
@@ -20,7 +20,7 @@ mod2<- 'obs_dengue_cases_hold~   lag3_y +
 
 mod3 <- 'obs_dengue_cases_hold~   lag3_y + log_cum_inc_12m +log_cum_inc_24m +log_cum_inc_36m +
                             f(fcodeID,
-                                   model="besag",
+                                   model="bym2",
                                    constr= TRUE,
                                    graph=MDR.adj,
                                     hyper = hyper.besag ,
