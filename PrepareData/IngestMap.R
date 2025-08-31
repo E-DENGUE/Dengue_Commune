@@ -20,7 +20,7 @@ provinces_keep <- c("Tỉnh An Giang" ,
 shp <- st_read("./Data/Staging_shapefiles/svn_admin_boundary_level2_2025.geojson")
 shp <- st_make_valid(shp)
 shp <- shp %>%
-  filter(l1_name_loc %in% provinces_keep)
+  dplyr::filter(l1_name_loc %in% provinces_keep)
 
 # Store original data for reference
 original_data <- data.frame(
