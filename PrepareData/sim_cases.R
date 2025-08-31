@@ -164,7 +164,9 @@ sim_data <- sim_data %>%
     owobs_dengue_cases_lag3_std = as.numeric(scale(owobs_dengue_cases_lag3)),
     time_linear = time_idx,
     time_scaled = as.numeric(scale(time_idx))
-  ) 
+  ) %>%
+  rename(lag3_avg_min_daily_temp=temp3) %>%
+  mutate(lag3_monthly_cum_ppt =rnorm(n=n(), 0,1))
 
 # Summary statistics
 cat("\n=== SIMULATION SUMMARY ===\n")
