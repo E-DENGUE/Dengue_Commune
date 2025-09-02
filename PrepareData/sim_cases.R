@@ -21,6 +21,11 @@ time_df <- data.frame(
   year = as.numeric(format(dates, "%Y"))
 )
 
+#data similar to real data--approximate mean
+approx_mean_cases <- read_csv('./Data/Dengue_approximate/ed_monthly_data_by_new_communes_2015-2024.csv') %>%
+  group_by(l2_code) %>%
+  summarize(approx_ave_case = mean(obs_dengue_cases,na.rm=T))
+
 cat("Simulating data for", n_regions, "regions and", n_months, "months\n")
 
 # Load and process temperature data
@@ -33,7 +38,8 @@ temperature_data <- vroom::vroom('./Data/meteorological.csv.gz') %>%
   ungroup() %>%
   dplyr::select(date, commune_id, temp3) %>%
   right_join(id_key, by = c('commune_id' = 'l2_code')) %>%
-  filter(!is.na(fcode))
+  filter(!is.na(fcode)) %>%
+  left_join(approx_mean_cases, by=c('commune_id'='l2_code'))
 
 # Read in neighbors
 g <- inla.read.graph("../Data/MDR.graph.commune")
@@ -41,7 +47,7 @@ nb_list <- g$nbs
 
 # Simulation parameters
 params <- list(
-  alpha_region = rnorm(n_regions, mean = -2, sd = 0.5),
+  alpha_region = 0, #does not need to be varying
   beta_cos = 0.3,
   beta_sin = 0.2,
   beta_temperature = 0.15,
@@ -68,7 +74,8 @@ sim_data <- sim_data %>%
     neighbor_cases_lag3 = 0,  # Cases in neighbors 3 months ago
     owobs_dengue_cases_lag3 = 0,       # Cases in own region 3 months ago
     log_lambda = NA_real_,
-    lambda = NA_real_
+    lambda = NA_real_,
+    lambda_rescale = NA_real_
   )%>%
   mutate(pop_total = 100000)
 
@@ -87,12 +94,17 @@ for(t in 1:n_months) {
   if(t %% 12 == 0) cat("Processing month", t, "of", n_months, "\n")
   
   current_indices <- region_time_matrix[, t]
+  first_indices <- region_time_matrix[, 1] #index for first time point in region
+  
   valid_current <- !is.na(current_indices)
   
   for(region in which(valid_current)) {
     row_idx <- current_indices[region]
     current_row <- sim_data[row_idx, ]
     
+    first_index_region <-  first_indices[region]
+    
+        
     # CORRECTED: Cases in neighboring regions exactly 3 months ago
     neighbor_cases_lag3 <- 0
     if(t > 3) {  # Need at least 3 months of history
@@ -110,7 +122,7 @@ for(t in 1:n_months) {
       }
     }
     
-    # CORRECTED: Cases in own region exactly 3 months ago
+    # Cases in own region exactly 3 months ago
     owobs_dengue_cases_lag3 <- 0
     if(t > 3) {
       lag3_time <- t - 3
@@ -127,7 +139,7 @@ for(t in 1:n_months) {
     sim_data$owobs_dengue_cases_lag3[row_idx] <- owobs_dengue_cases_lag3
     
     # Calculate log(lambda)
-    log_lambda <- params$alpha_region[region] +
+    log_lambda <- params$alpha_region +
       params$beta_cos * current_row$cos_term +
       params$beta_sin * current_row$sin_term +
       params$beta_temperature * current_row$temp3 / 10 +
@@ -136,7 +148,7 @@ for(t in 1:n_months) {
     
     # Handle missing temperature data
     if(is.na(log_lambda)) {
-      log_lambda <- params$alpha_region[region] +
+      log_lambda <- params$alpha_region +
         params$beta_cos * current_row$cos_term +
         params$beta_sin * current_row$sin_term +
         params$beta_spatial * log(neighbor_cases_lag3+1) / 10 +
@@ -145,12 +157,20 @@ for(t in 1:n_months) {
     
     # Calculate lambda and simulate cases
     lambda <- exp(log_lambda)
-    obs_dengue_cases <- rpois(1, lambda)
+    
+      #obs_dengue_cases <- rpois(1, lambda)
     
     # Store results
     sim_data$log_lambda[row_idx] <- log_lambda
     sim_data$lambda[row_idx] <- lambda
-    sim_data$obs_dengue_cases[row_idx] <- obs_dengue_cases
+    
+     #rescale lambda to match real data for each commune
+      sim_data$lambda_rescale[row_idx] = sim_data$lambda[row_idx]*sim_data$approx_ave_case[row_idx]/mean(sim_data$lambda[first_index_region:row_idx], na.rm=T)  #rescale the sim lambda to match the real data
+      
+     if(!is.na(sim_data$lambda_rescale[row_idx])){
+        
+      sim_data$obs_dengue_cases[row_idx] = rpois( 1,sim_data$lambda_rescale[row_idx])
+    }
   }
 }
 
@@ -158,6 +178,7 @@ cat("Simulation complete!\n")
 
 # Add derived variables
 sim_data <- sim_data %>%
+ 
   mutate(
     temp3_std = as.numeric(scale(temp3)),
     neighbor_cases_lag3_std = as.numeric(scale(neighbor_cases_lag3)),
@@ -189,7 +210,7 @@ print(summary_stats)
 cat("\nVerifying lag structure for first region:\n")
 verification <- sim_data %>%
   filter(fcode == 1) %>%
-  select(date, time_idx, obs_dengue_cases, neighbor_cases_lag3, owobs_dengue_cases_lag3) %>%
+  dplyr::select(date, time_idx, obs_dengue_cases, neighbor_cases_lag3, owobs_dengue_cases_lag3) %>%
   head(10)
 print(verification)
 

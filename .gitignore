@@ -5,3 +5,4 @@
 PrepareData/Data/Archive_meteorological/*.csv
 PrepareData/Data/Staging_meteorological/*.csv
 PrepareData/Data/Staging_shapefiles/*.geojson
+PrepareData/Data/Dengue_approximate/
