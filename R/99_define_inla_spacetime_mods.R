@@ -33,3 +33,5 @@ mod3 <- 'obs_dengue_cases_hold~   lag3_y + log_cum_inc_12m +log_cum_inc_24m +log
 ##Reference model 
 mod0 <- 'obs_dengue_cases_hold ~  f(fcodeID, model="iid") +
         f(monthN, model="rw1", hyper=hyper2.rw, cyclic=TRUE, scale.model=TRUE, constr=TRUE, replicate=fcodeID2)'
+
+

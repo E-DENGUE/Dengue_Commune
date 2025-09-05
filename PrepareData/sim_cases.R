@@ -1,13 +1,18 @@
 library(INLA)
 library(dplyr)
+library(tidyverse)
 library(sf)
 library(spdep)
 
 id_key <- vroom::vroom('../Data/inla_id_key.csv')
 
+# Read in neighbors
+g <- inla.read.graph("../Data/MDR.graph.commune")
+nb_list <- g$nbs
+
+
 # Set parameters
 set.seed(12345)
-n_regions <- 489
 start_year <- 2010
 end_year <- 2024
 n_months <- (end_year - start_year + 1) * 12  # 180 months
@@ -22,9 +27,20 @@ time_df <- data.frame(
 )
 
 #data similar to real data--approximate mean
-approx_mean_cases <- read_csv('./Data/Dengue_approximate/ed_monthly_data_by_new_communes_2015-2024.csv') %>%
+province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
+
+approx_mean_cases <- lapply(province_codes, function(X) readxl::read_excel('./Data/Dengue_observed_10_province/250905_ED_MONTHLY dengue case_10 provinces_2010-2024.xlsx', sheet=X)) %>%
+  bind_rows() %>%
+  rename(l2_code = l2_code_commune,
+         obs_dengue_cases = dengue ) %>%
   group_by(l2_code) %>%
-  summarize(approx_ave_case = mean(obs_dengue_cases,na.rm=T))
+  summarize(approx_ave_case = mean(obs_dengue_cases,na.rm=T),
+            ) %>%
+  right_join(id_key, by='l2_code') %>%
+  dplyr::select(l2_code, approx_ave_case )
+
+n_regions <- nrow(approx_mean_cases)
+
 
 cat("Simulating data for", n_regions, "regions and", n_months, "months\n")
 
@@ -41,18 +57,14 @@ temperature_data <- vroom::vroom('./Data/meteorological.csv.gz') %>%
   filter(!is.na(fcode)) %>%
   left_join(approx_mean_cases, by=c('commune_id'='l2_code'))
 
-# Read in neighbors
-g <- inla.read.graph("../Data/MDR.graph.commune")
-nb_list <- g$nbs
-
 # Simulation parameters
 params <- list(
   alpha_region = 0, #does not need to be varying
   beta_cos = 0.3,
   beta_sin = 0.2,
   beta_temperature = 0.15,
-  beta_spatial = 0.02,
-  beta_temporal = 0.05
+  beta_spatial = 0, #0.5
+  beta_temporal = 0.5
 )
 
 # Create base data frame
