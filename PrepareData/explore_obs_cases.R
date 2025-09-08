@@ -5,10 +5,7 @@ library(cowplot)
 library(INLA)
 province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
 
-a1 <- lapply(province_codes, function(X) readxl::read_excel('./Data/Dengue_observed_10_province/250905_ED_MONTHLY dengue case_10 provinces_2010-2024.xlsx', sheet=X)) %>%
-  bind_rows() %>%
-   rename(l2_code = l2_code_commune,
-         obs_dengue_cases = dengue ) 
+a1 <- vroom::vroom("../Data/case_data.csv.gz")
 
 
 ave_cases <- a1 %>%
@@ -20,6 +17,8 @@ ave_cases <- a1 %>%
  range(ave_cases$N) #all communess have 180 months
  
  gravity <- a1 %>%
+   mutate(year= lubridate::year(date),
+          month = lubridate::month(date)) %>%
    group_by(l2_code, year) %>%
    mutate(proportion_month = obs_dengue_cases/sum(obs_dengue_cases),
           gravity_part = proportion_month * month
@@ -40,6 +39,7 @@ ave_cases <- a1 %>%
    ungroup()
  
  l2_codes <- unique(gravity$l2_code)
+ 
  gravity %>%
    filter(l2_code %in% l2_codes[1:10]) %>%
 ggplot( aes(x=rel_grav_lag1, y=relative_gravity, color=as.factor(l2_code)))+

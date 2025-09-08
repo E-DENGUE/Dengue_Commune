@@ -5,7 +5,7 @@ library(INLA)
 library(tidyverse)
 
 # Read and prepare data
-shp <- st_read("./Data/Staging_shapefiles/svn_admin_boundary_level2_2025.geojson")
+shp <- st_read("./Data/Staging_shapefiles/mdr_boundary_level2_2025.geojson")
 shp <- st_make_valid(shp)
 shp <- shp %>%
   dplyr::filter(l2_code %in% l2_code_keep)

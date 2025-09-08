@@ -41,7 +41,11 @@ temp_data <- vroom::vroom('./Data/meteorological.csv.gz') %>%
   mutate(l2_code = as.numeric(l2_code)) 
 
 ## read in pop file
-#pop_data <- vroom::vroom('./Data/Dengue_approximate/ed_monthly_data_by_new_communes_2015-2024.csv')
+pop <- st_read("./Data/Staging_shapefiles/mdr_boundary_level2_2025.geojson") %>%
+  as.data.frame() %>%
+  dplyr::select(l2_code,area, population) %>%
+  mutate(l2_code = as.numeric(l2_code),
+         pop_density = population/area/1000)
 
   
 #Combine meterological data and case data
@@ -49,8 +53,9 @@ temp_data <- vroom::vroom('./Data/meteorological.csv.gz') %>%
 a2 <- a1 %>%
   left_join(temp_data, by=c('l2_code','date')
             ) %>%
+  left_join(pop, by='l2_code') %>%
   filter(!is.na(fcode) & date>='2010-01-01') %>%
-  dplyr::select(date,fcode, l2_code,obs_dengue_cases ,temp3 )
+  dplyr::select(date,fcode, l2_code,obs_dengue_cases ,temp3, population )
 
 # Save results
 vroom::vroom_write(a2, "../Data/case_data.csv.gz")
