@@ -10,7 +10,7 @@ This code fits and evaluate models for forecasting the incidence of dengue cases
 
 3.  An experimental approach that models the district from each time series independently and uses the lagged cases from the district of interest and all of the other districts. A large matrix of these lagged cases is created, and Y-aware principal components analysis is performed. The top N principal components that explain 85% of the variation is used in the model along with harmonic terms and an AR(1) random intercept
 
-Several variations of each of these models with different covariates and random effects structures is evaluated. Each of these models is evaluated using time series cross validation by moving forward the end of the training period by 1 time unit at a time. Forecasting performance at 2 months is evaluated using continuous ranked probability score (CRPS) and Brier scores. We create an ensemble based on the CRPS scores.
+Several variations of each of these models with different covariates and random effects structures is evaluated. Each of these models is evaluated using time series cross validation by moving forward the end of the training period by 1 time unit at a time. Forecasting performance at 2 months is evaluated using continuous ranked probability score (CRPS) and Brier scores. We create an ensemble based on the CRPS scores. Details of the modeling approach (applied at the district level) can be found in this (preprint)[https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5068596](https://arxiv.org/abs/2412.15645)
 
 ## Preparing the data
 
