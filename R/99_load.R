@@ -26,26 +26,9 @@ source('./R/02_fun_hhh4.R')
 source('./R/03_fun_lag_district_pca.R')
 
 ##read the file from "Input" folder
-d2<-  vroom::vroom('./Data/simulated_spatio_temporal_data_with_temp.csv.gz')
-
-# MDR_NEW <- readRDS( './Data/MDR_NEW.rds')
-# 
-# 
-# #spat_IDS <- readRDS( "./Model/Data/spatial_IDS.rds")
-# 
-# neighb <- poly2nb(st_make_valid(MDR_NEW), queen = T, snap = sqrt(0.001))
-# 
-# nb2INLA("MDR.graph", neighb)
-# 
-# MDR.adj <- paste(getwd(), "/MDR.graph", sep = "") #this is what is given to inla
-
-#g <- inla.read.graph("./Data/MDR.graph.commune")
+d2<-  vroom::vroom('./Data/case_data.csv.gz')
 
 MDR.adj <- "./Data/MDR.graph.commune"
-
-#date.test2 <- seq.Date(from=as.Date(max(d2$date)) %m-% months(5) ,to=as.Date(max(d2$date)) %m-% months(3) , by='month')
-
-#date.test2 <- seq.Date(from=as.Date('2012-01-01')  ,to=as.Date('2025-04-01') , by='month')
 
 date.test2 <- as.Date(max(d2$date%m-% months(3)))
 
