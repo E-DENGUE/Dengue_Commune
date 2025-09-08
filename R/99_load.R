@@ -32,6 +32,14 @@ MDR.adj <- "./Data/MDR.graph.commune"
 
 date.test2 <- as.Date(max(d2$date%m-% months(3)))
 
+# MDR_NEW <- readRDS( './Data/MDR_NEW.rds')
+# 
+# 
+spat_IDS <- vroom::vroom( "./Data/inla_id_key2.csv")
+
+
+
+g <- inla.read.graph("./Data/MDR.graph.commune")
 
 all.fcodes <- unique(d2$fcode)
 
