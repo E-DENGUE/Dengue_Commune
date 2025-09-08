@@ -20,7 +20,7 @@ c1 <- d2 %>%
          lag_y = lag(log_df_rate, 1),
          lag2_y = lag(log_df_rate, 2),
          lag3_y = lag(log_df_rate, 3),
-         t2m_avg
+         #t2m_avg,
          max_allowed_lag = 3,
          horizon = ifelse(date == (vintage_date %m+% months(1)), 1,
                           ifelse(date == (vintage_date %m+% months(2)), 2,
@@ -60,7 +60,7 @@ form2 <- as.formula(
                         model="bym2",
                         constr= TRUE,
                         graph=MDR.adj,
-                         hyper = hyper.besag ,
+                         hyper = hyper.bym2 ,
                         scale.model = TRUE) +
                      lag3_avg_min_daily_temp + 
                      lag3_monthly_cum_ppt +
@@ -77,6 +77,9 @@ c1_subset <- c1 %>%
   filter(date >= '2012-01-01')
   
 offset1 <- c1_subset$offset1
+
+hyper.bym2 = list(theta1 = list(prior="pc.prec", param=c(1, 0.01)),
+                  theta2 = list(prior="pc", param=c(0.5, 0.5)))
 
 mod1 <- inla(form2, data = c1_subset,  family = "zeroinflatedpoisson0",E=offset1,
              control.compute = list(dic = FALSE, 

@@ -2,7 +2,7 @@ library(tidyverse)
 library(sf)
 library(leaflet)
 library(cowplot)
-
+library(INLA)
 province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
 
 a1 <- lapply(province_codes, function(X) readxl::read_excel('./Data/Dengue_observed_10_province/250905_ED_MONTHLY dengue case_10 provinces_2010-2024.xlsx', sheet=X)) %>%
@@ -32,8 +32,18 @@ ave_cases <- a1 %>%
    mutate(commune_x = as.numeric(as.factor(l2_code))) %>%
    group_by(year) %>%
    mutate(relative_gravity = gravity - mean(gravity, na.rm=T)) %>%
+   ungroup() %>%
+   arrange(l2_code, year) %>%
+   group_by(l2_code) %>%
+   mutate(rel_grav_lag1 = lag(relative_gravity,1)
+          ) %>%
    ungroup()
  
+ l2_codes <- unique(gravity$l2_code)
+ gravity %>%
+   filter(l2_code %in% l2_codes[1:10]) %>%
+ggplot( aes(x=rel_grav_lag1, y=relative_gravity, color=as.factor(l2_code)))+
+   geom_point()
  
 ggplot(gravity, aes(x=tot_case, y=gravity))+
   geom_point()
@@ -117,4 +127,62 @@ final_plot <- ggdraw() +
 
 final_plot
 
+###############################################
+##time seriespredictors of gravity
+#############################################
+id_mapping_key <- vroom::vroom('../Data/inla_id_key.csv')
 
+mod_ds <- gravity %>%
+  left_join(id_mapping_key, by='l2_code') %>%
+  mutate(t = year - min(year, na.rm=T) + 1 ,
+         fcodeID1 = fcode,
+         fcodeID2 = fcode
+         
+                  )  %>%
+  filter(!is.na(fcodeID1)) 
+  
+  
+
+
+form2 <- as.formula(
+  'relative_gravity~   f(fcodeID1,
+                        model="bym2",
+                        constr= TRUE,
+                        graph=MDR.adj,
+                         hyper = hyper.bym2 ,
+                        scale.model = TRUE) +
+                    f(t,  replicate=fcodeID2, model="ar1", hyper = hyper.ar1,constr=TRUE) 
+                '
+)
+
+form3 <- as.formula(
+  'relative_gravity~   f(fcodeID1,
+                        model="iid") +
+                    f(t,  replicate=fcodeID2, model="ar1", hyper = hyper.ar1,constr=TRUE) 
+                '
+)
+hyper.bym2 = list(theta1 = list(prior="pc.prec", param=c(1, 0.01)),
+                  theta2 = list(prior="pc", param=c(0.5, 0.5)))
+
+hyper.ar1 = list(theta1 = list(prior='pc.prec', param=c(0.5, 0.01)),
+                 rho = list(prior='pc.cor0', param = c(0.5, 0.75)))
+
+MDR.adj <- "../Data/MDR.graph.commune"
+
+mod1 <- inla(form3, data = mod_ds[mod_ds$year<2020,],  family = "gaussian",
+             control.compute = list(dic = FALSE, 
+                                    waic = FALSE, 
+                                    config = T,
+                                    return.marginals=F
+             ),
+             # save predicted values on response scale
+             control.inla = list(strategy = 'simplified.laplace', cmin = 0.01),
+             control.fixed = list(mean.intercept=0, 
+                                  prec.intercept=1, # precision 1
+                                  mean=0, 
+                                  prec=1), # weakly regularising on fixed effects (sd of 1)
+             inla.mode = "experimental", # new version of INLA algorithm (requires R 4.1 and INLA testing version)
+             num.threads=4
+)    
+
+summary(mod1)

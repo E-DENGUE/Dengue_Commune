@@ -4,22 +4,6 @@ library(spdep)
 library(INLA)
 library(tidyverse)
 
-#the new MDR boundaries include these regions:
-#"Tỉnh An Giang"         
-#"Tỉnh Đồng Tháp"        
-#"Tỉnh Vĩnh Long"       
-#"Thành phố Cần Thơ" 
-#"Tỉnh Cà Mau"          
-
-province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
-
-l2_code_keep <- lapply(province_codes, function(X) readxl::read_excel('./Data/Dengue_observed_10_province/250905_ED_MONTHLY dengue case_10 provinces_2010-2024.xlsx', sheet=X)) %>%
-  bind_rows() %>%
-  rename(l2_code = l2_code_commune,
-         obs_dengue_cases = dengue ) %>%
-  pull(l2_code) %>%
-  unique()
-
 # Read and prepare data
 shp <- st_read("./Data/Staging_shapefiles/svn_admin_boundary_level2_2025.geojson")
 shp <- st_make_valid(shp)
@@ -78,7 +62,7 @@ id_mapping_key <- data.frame(
   stringsAsFactors = FALSE
 )
 
-vroom::vroom_write(id_mapping_key,'../Data/inla_id_key.csv')
+vroom::vroom_write(id_mapping_key,'../Data/inla_id_key2.csv')
 
 # Add the INLA index to the clean shapefile
 shp_clean$fcode <- id_mapping_key$fcode
