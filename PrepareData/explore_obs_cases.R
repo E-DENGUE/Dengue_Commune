@@ -3,9 +3,10 @@ library(sf)
 library(leaflet)
 library(cowplot)
 library(INLA)
-province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
 
-a1 <- vroom::vroom("../Data/case_data.csv.gz")
+a1 <- vroom::vroom("../Data/case_data.csv.gz") %>%
+  arrange(fcode, date) %>%
+  mutate(t = row_number())
 
 
 ave_cases <- a1 %>%
@@ -16,6 +17,18 @@ ave_cases <- a1 %>%
  hist(ave_cases$ave_month_cases)
  range(ave_cases$N) #all communess have 180 months
  
+ max_dtr <- a1 %>%
+   mutate(year= lubridate::year(date),
+          month = lubridate::month(date)) %>%
+   group_by(l2_code, year) %>%
+   mutate(max_dtr_ind = if_else(lag3_monthly_dtr==max(lag3_monthly_dtr),1,-999),
+          max_dtr_month = month*max_dtr_ind - 3, #what is the actual month
+          max_dtr_month = if_else(max_dtr_month<1,max_dtr_month+12, max_dtr_month)
+          )%>%
+   summarize(max_dtr= max(lag3_monthly_dtr),
+             max_dtr_month = max(max_dtr_month)
+   )
+   
  gravity <- a1 %>%
    mutate(year= lubridate::year(date),
           month = lubridate::month(date)) %>%
@@ -36,7 +49,9 @@ ave_cases <- a1 %>%
    group_by(l2_code) %>%
    mutate(rel_grav_lag1 = lag(relative_gravity,1)
           ) %>%
-   ungroup()
+   ungroup() %>%
+   left_join(max_dtr, by=c('year','l2_code')
+   )
  
  l2_codes <- unique(gravity$l2_code)
  
@@ -48,8 +63,16 @@ ggplot( aes(x=rel_grav_lag1, y=relative_gravity, color=as.factor(l2_code)))+
 ggplot(gravity, aes(x=tot_case, y=gravity))+
   geom_point()
 
-ggplot(gravity, aes(x=commune_index, y=gravity, size=(tot_case)))+
+ggplot(gravity, aes(x=max_dtr, y=gravity))+
   geom_point()
+ggplot(gravity, aes(x=max_dtr_month, y=gravity))+
+  geom_point()
+
+ggplot(gravity, aes(x=max_dtr_month, y=max_dtr))+
+  geom_point()
+
+# ggplot(gravity, aes(x=commune_index, y=gravity, size=(tot_case)))+
+#   geom_point()
 
 ggplot(gravity, (aes(x=year, y=gravity, group=l2_code)))+
   geom_line()
@@ -74,15 +97,20 @@ ggplot(ave_rel_gravity)+
   geom_point(aes(x=orderN, y=mean_relative_gravity, size=(tot_case))) +
     geom_errorbar(aes(x=orderN, ymin=min_rel_gravity, ymax=max_rel_gravity), width=0.1) 
 
-geo <- st_read("./Data/Staging_shapefiles/svn_admin_boundary_level2_2025.geojson")
+geo <- st_read("./Data/Staging_shapefiles/mdr_boundary_level2_2025.geojson")
 
 geo_joined <- geo %>%
   right_join(ave_rel_gravity, by='l2_code')  %>%
   mutate(
+    pop_density = population/area/100,
+    incidence = tot_case/population*100000,
     gravity_cat = ntile(mean_relative_gravity, 3),
     other_cat   = ntile(tot_case, 3),
     bi_class    = paste0(gravity_cat, "-", other_cat)
   )
+
+# ggplot(geo_joined) +
+#   geom_point(aes(x=sqrt(pop_density), y=sqrt(incidence) ) )
 
 #average timing
 ggplot(geo_joined) +
@@ -145,7 +173,8 @@ mod_ds <- gravity %>%
 
 
 form2 <- as.formula(
-  'relative_gravity~   f(fcodeID1,
+  'relative_gravity~   lag3_monthly_dtr + lag3_avg_min_daily_temp + lag3_monthly_cum_ppt+
+                            f(fcodeID1,
                         model="bym2",
                         constr= TRUE,
                         graph=MDR.adj,
@@ -186,3 +215,62 @@ mod1 <- inla(form3, data = mod_ds[mod_ds$year<2020,],  family = "gaussian",
 )    
 
 summary(mod1)
+
+#"at higher average temperatures (above 18°C), large daily temperature fluctuations decrease mosquito survival and viral amplification, leading to lower transmission rates"
+a1 %>%
+  ggplot(aes(x=date, y=lag3_monthly_dtr, group=fcode))+
+  geom_line( alpha=0.1)+
+  ylab('Diurnal temperature range')
+
+a1 %>%
+  ggplot(aes(x=date, y=(lag3_avg_min_daily_temp-273.15), group=fcode))+
+  geom_line()
+
+a1 %>%
+  ggplot(aes(x=date, y=lag3_monthly_cum_ppt, group=fcode))+
+  geom_line()
+
+a1 %>%
+  ggplot(aes(x=lag3_monthly_dtr, y=lag3_avg_min_daily_temp))+
+  geom_point(alpha=0.1)
+
+
+
+form4 <- as.formula(
+  'obs_dengue_cases~   lag3_avg_min_daily_temp +
+                          lag3_monthly_dtr +
+                          lag3_monthly_cum_ppt+
+                          lag3_monthly_dtr*lag3_avg_min_daily_temp +
+                          lag3_monthly_dtr *lag3_monthly_cum_ppt+
+                            f(fcode,
+                        model="iid") +
+                    f(t,   model="ar1", hyper = hyper.ar1,constr=TRUE) 
+                '
+)
+
+mod_ds <- a1 %>%
+  ungroup() %>%
+  mutate( lag3_avg_min_daily_temp= scale(lag3_avg_min_daily_temp),
+          lag3_monthly_dtr= scale(lag3_monthly_dtr),
+          lag3_monthly_cum_ppt = scale(lag3_monthly_cum_ppt)
+          )
+
+pop1 <- mod_ds$population/100000
+
+mod1 <- inla(form4, data = mod_ds,  family = "poisson", offset=pop1,
+             control.compute = list(dic = FALSE, 
+                                    waic = FALSE, 
+                                    config = T,
+                                    return.marginals=F
+             ),
+             # save predicted values on response scale
+             control.inla = list(strategy = 'simplified.laplace', cmin = 0.01),
+             control.fixed = list(mean.intercept=0, 
+                                  prec.intercept=1, # precision 1
+                                  mean=0, 
+                                  prec=1), # weakly regularising on fixed effects (sd of 1)
+             inla.mode = "experimental", # new version of INLA algorithm (requires R 4.1 and INLA testing version)
+             num.threads=4
+)    
+summary(mod1)
+

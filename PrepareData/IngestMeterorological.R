@@ -8,15 +8,18 @@ lapply(all_functions, source)  #Read in all functions
 
 #List ll files in the staging folder
 filenames_full_path <-
-  list.files("./Data/Staging_meteorological/", full.names = TRUE)
+  list.files("./Data/Archive_meteorological/", full.names = TRUE)
+
+filenames_full_path <- filenames_full_path[-grep('README',filenames_full_path)]
 
 #Read in and clean the data into a tidy format
 month_ave <- pbapply::pblapply(filenames_full_path, FUN=read_meterological)
 
 month_ave2 <- combine_meteorological(month_ave)
 
+
 #Save as compressed csv file, which compress ~3-fold
 vroom::vroom_write(month_ave2, './Data/meteorological.csv.gz' )
 
 #Move the staging files to an archive folder
-lapply(filenames_full_path, FUN=move.file)
+#lapply(filenames_full_path, FUN=move.file)

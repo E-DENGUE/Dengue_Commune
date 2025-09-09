@@ -3,7 +3,7 @@
 #SBATCH --mail-type=ALL
 #SBATCH --partition day,scavenge
 #SBATCH --requeue
-#SBATCH --mail-user=wa223@yale.edu
+#SBATCH --mail-user=daniel.weinberger@yale.edu
 #SBATCH --cpus-per-task=8
 #SBATCH --mem-per-cpu=10G
 #SBATCH -o ./Report/output01/output01.%a.out # STDOUT
