@@ -85,6 +85,7 @@ ggplot(gravity, (aes(x=year, y=relative_gravity, group=l2_code)))+
 ave_rel_gravity <- gravity %>%
   group_by(l2_code) %>%
   summarize(mean_relative_gravity = mean(relative_gravity, na.rm=T),
+            var_relative_gravity = var(relative_gravity, na.rm=T),
             min_rel_gravity = quantile(relative_gravity, na.rm=T, probs=0.1),
             max_rel_gravity = quantile(relative_gravity, na.rm=T, probs=0.9),
             tot_case = mean(tot_case, na.rm=T),) %>%
@@ -94,8 +95,8 @@ ave_rel_gravity <- gravity %>%
          l2_code = as.character(l2_code))
 
 ggplot(ave_rel_gravity)+
-  geom_point(aes(x=orderN, y=mean_relative_gravity, size=(tot_case))) +
-    geom_errorbar(aes(x=orderN, ymin=min_rel_gravity, ymax=max_rel_gravity), width=0.1) 
+  geom_point(aes(x=orderN, y=mean_relative_gravity)) +
+    geom_errorbar(aes(x=orderN, ymin=mean_relative_gravity - 2*sqrt(var_relative_gravity), ymax=mean_relative_gravity + 2*sqrt(var_relative_gravity)), width=0.1) 
 
 geo <- st_read("./Data/Staging_shapefiles/mdr_boundary_level2_2025.geojson")
 
@@ -104,8 +105,8 @@ geo_joined <- geo %>%
   mutate(
     pop_density = population/area/100,
     incidence = tot_case/population*100000,
-    gravity_cat = ntile(mean_relative_gravity, 3),
-    other_cat   = ntile(tot_case, 3),
+    gravity_cat = ntile(mean_relative_gravity, 2),
+    other_cat   = ntile(tot_case, 2),
     bi_class    = paste0(gravity_cat, "-", other_cat)
   )
 
@@ -118,15 +119,14 @@ ggplot(geo_joined) +
   scale_fill_viridis_c(option = "plasma") +
   theme_minimal()
 
-  
 bivar_pal <- c(
-  "3-1" = "#e8e8e8", "2-1" = "#b0d5df", "1-1" = "#64acbe",
-  "3-2" = "#e4acac", "2-2" = "#ad9ea5", "1-2" = "#627f8c",
-  "3-3" = "#c85a5a", "2-3" = "#985356", "1-3" = "#574249"
-)
+   "2-1" = "#b0d5df", "1-1" = "#64acbe",
+   "2-2" = "#c85a5a", "1-2" = "#574249"
+  )
+
 legend <- ggplot() +
   geom_tile(
-    data = expand.grid(gravity_cat = 1:3, case_cat = 1:3),
+    data = expand.grid(gravity_cat = 1:2, case_cat = 1:2),
     aes(x = gravity_cat, y = case_cat, fill = paste0(gravity_cat, "-", case_cat))
   ) +
   scale_fill_manual(values = bivar_pal) +
@@ -138,6 +138,27 @@ legend <- ggplot() +
     axis.title.x = element_text(hjust = 1),
     axis.title.y = element_text(hjust = 1)
   )
+
+geo_joined %>%
+  ggplot() +
+  geom_point(aes(x=factor(bi_class), y=log(pop_density)))+
+  geom_violin(aes(x=factor(bi_class), y=log(pop_density)))
+
+geo_joined %>%
+  ggplot() +
+  geom_point(aes(y=mean_relative_gravity, x=log(pop_density), size=1/var_relative_gravity), alpha=0.2)+
+  theme_classic()
+
+geo_joined %>%
+  ggplot() +
+  geom_point(aes(y=mean_relative_gravity, x=log(pop_density)))
+
+
+map_density <- ggplot(geo_joined) +
+  geom_sf(aes(fill = log(pop_density)), color = "white", size = 0.2)+
+  theme_minimal() 
+  
+map_density
 
 map <- ggplot(geo_joined) +
   geom_sf(aes(fill = bi_class), color = "white", size = 0.2) +
@@ -216,6 +237,9 @@ mod1 <- inla(form3, data = mod_ds[mod_ds$year<2020,],  family = "gaussian",
 
 summary(mod1)
 
+####
+#PLOTS OF DTR BY AREA
+#####
 #"at higher average temperatures (above 18°C), large daily temperature fluctuations decrease mosquito survival and viral amplification, leading to lower transmission rates"
 a1 %>%
   ggplot(aes(x=date, y=lag3_monthly_dtr, group=fcode))+
@@ -234,6 +258,16 @@ a1 %>%
   ggplot(aes(x=lag3_monthly_dtr, y=lag3_avg_min_daily_temp))+
   geom_point(alpha=0.1)
 
+
+ave_climate <- a1 %>%
+  group_by(l2_code) %>%
+  summarize(mean_dtr= mean(lag3_monthly_dtr,na.rm=T),
+            mean_min_temp = mean(lag3_avg_min_daily_temp, na.rm=T),
+            mean_ppt = mean(lag3_monthly_cum_ppt, na.rm=T)
+            )
+
+map <- ggplot(geo_joined) +
+  geom_sf(aes(fill = bi_class), color = "white", size = 0.2)
 
 
 form4 <- as.formula(
