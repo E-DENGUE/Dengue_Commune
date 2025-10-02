@@ -4,17 +4,12 @@ hhh4_mod <- function(vintage_date, modN,max_horizon=3){
   
   set.seed(8123)  # Global R seed for reproducibility
   
-  
-  MDR_NEW <- readRDS( "./Model/Data/MDR_NEW.rds") %>%
-    arrange(ID)
+  MDR_NEW <- readRDS( "./Data/inla_shp_file.rds") %>%
+    arrange(fcode)
   
   row.names(MDR_NEW) <- MDR_NEW$fcode
-  
- MDR_NEW <- MDR_NEW %>%
-    dplyr::filter(fcode != "ED_KIEN_GIANG_KIEN_HAI_DISTRICT",
-                  fcode != "ED_KIEN_GIANG_PHU_QUOC_CITY")
-  
-  neighb <- surveillance::poly2adjmat(st_make_valid(MDR_NEW))
+
+  neighb <- surveillance::poly2adjmat(sf::st_make_valid(MDR_NEW))
   
   dist_nbOrder <- nbOrder(neighb)
   
