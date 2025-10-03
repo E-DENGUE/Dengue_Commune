@@ -2,6 +2,7 @@ library(INLA)
 library(dplyr)
 library(tidyverse)
 library(sf)
+library(roll)
 library(spdep)
 
 # Read in neighbors
@@ -59,7 +60,25 @@ a2 <- a1 %>%
             ) %>%
   left_join(pop, by=c('l2_code')) %>%
   filter(!is.na(fcode) & date>='2010-01-01') %>%
-  dplyr::select(date,fcode, l2_code,obs_dengue_cases ,lag3_avg_min_daily_temp,lag3_monthly_cum_ppt,lag3_monthly_dtr, population )
+  dplyr::select(date,fcode, l2_code,obs_dengue_cases ,lag3_avg_min_daily_temp,lag3_monthly_cum_ppt,lag3_monthly_dtr, population ) %>%
+  arrange(fcode, date) %>%
+  group_by(fcode) %>%
+  mutate( 
+    cumsum_cases_24m =  roll::roll_sum(obs_dengue_cases,24, min_obs=1), #partial backward moving sum
+    cumsum_pop_24m =  roll::roll_sum(population,24, min_obs=1), #partial backward moving sum
+    cum_inc_24m = (cumsum_cases_24m+1)/cumsum_pop_24m*100000,
+    log_cum_inc_24m = log(cum_inc_24m),
+    log_cum_inc_24m = (log_cum_inc_24m - mean(log_cum_inc_24m,na.rm=T))/sd(log_cum_inc_24m, na.rm=T),
+    lag3_log_cum_inc_24m=lag(log_cum_inc_24m,3),
+    
+    log_lag12_inc = lag(
+          log( 
+            ((obs_dengue_cases+1)/population*100000)
+      ), 
+      12),
+    log_lag12_inc = (log_lag12_inc - mean(log_lag12_inc, na.rm=T))/sd(log_lag12_inc, na.rm=T)
+    ) %>%
+  ungroup()
 
 # Save results
 vroom::vroom_write(a2, "../Data/case_data.csv.gz")
