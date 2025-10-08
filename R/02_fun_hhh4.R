@@ -1,14 +1,15 @@
 hhh4_mod <- function(vintage_date, modN,max_horizon=3){
   
- #sim.mat <- readRDS('./Data/tsclust_simmat.rds')
+  #sim.mat <- readRDS('./Data/tsclust_simmat.rds')
   
   set.seed(8123)  # Global R seed for reproducibility
   
   MDR_NEW <- readRDS( "./Data/inla_shp_file.rds") %>%
-    arrange(fcode)
+    arrange(fcode) %>% 
+    mutate(fcode = as.character(fcode))
   
   row.names(MDR_NEW) <- MDR_NEW$fcode
-
+  
   neighb <- surveillance::poly2adjmat(sf::st_make_valid(MDR_NEW))
   
   dist_nbOrder <- nbOrder(neighb)
@@ -46,7 +47,7 @@ hhh4_mod <- function(vintage_date, modN,max_horizon=3){
     dplyr::select(unique(MDR_NEW$fcode))%>%
     as.matrix()
   
-   pop_total <- c1.fit %>% 
+  pop_total <- c1.fit %>% 
     mutate(pop2= pop_total/100000) %>%
     reshape2::dcast(date~fcode, value.var= 'pop2') %>%
     filter(date>=start.date) %>%
@@ -97,7 +98,7 @@ hhh4_mod <- function(vintage_date, modN,max_horizon=3){
   #colnames(sim.mat2) <- MDR_NEW$fcode
   
   
- # dengue_df_dist <- sts(cases.fit, start = c(start.year, start.month), frequency = 12,
+  # dengue_df_dist <- sts(cases.fit, start = c(start.year, start.month), frequency = 12,
   #                      population =  pop_total, neighbourhood =sim.mat2 , map=map1)
   
   all_dates <- sort(unique(c1$date))
@@ -212,8 +213,8 @@ hhh4_mod <- function(vintage_date, modN,max_horizon=3){
   plot(dengueSim, type = "time", average = median)
   
   #par(mfrow = c(1,1), mar = c(3, 5, 2, 1), las = 1)
-   #plot(dengueFit_ri, type = "fitted", total = TRUE,
-   #    hide0s = TRUE, par.settings = NULL, legend = FALSE)
+  #plot(dengueFit_ri, type = "fitted", total = TRUE,
+  #    hide0s = TRUE, par.settings = NULL, legend = FALSE)
   # plot(dengueSim, "fan", means.args = list(), key.args = list(), add=T)
   
   samps <- dengueSim[(max_horizon-2):max_horizon,,] #samples from fitted model
@@ -327,7 +328,7 @@ hhh4_mod <- function(vintage_date, modN,max_horizon=3){
   }
   
   out.list <- combine_lists(samps_out_list)
-
+  
   
   # Assuming log.samps.inc is your data frame
   out.list$log.samps.inc <- out.list$log.samps.inc %>%
@@ -338,9 +339,9 @@ hhh4_mod <- function(vintage_date, modN,max_horizon=3){
   crps3<- out.list$scores
   samps.out<- out.list$log.samps.inc
   
-out.list =  list ('ds'=c1.out, 'scores'=crps3,'log.samps.inc'=samps.out)
-
-saveRDS(out.list,paste0('./Output/Results/Results_hhh4/', 'mod',mod.select,'_',vintage_date  ,'.rds' )   )
-
-return(out.list)
+  out.list =  list ('ds'=c1.out, 'scores'=crps3,'log.samps.inc'=samps.out)
+  
+  saveRDS(out.list,paste0('./Output/Results/Results_hhh4/', 'mod',mod.select,'_',vintage_date  ,'.rds' )   )
+  
+  return(out.list)
 }
