@@ -26,7 +26,9 @@ source('./R/02_fun_hhh4.R')
 source('./R/03_fun_lag_district_pca.R')
 
 ##read the file from "Input" folder
-d2<-  vroom::vroom('./Data/case_data.csv.gz')
+d2<-  vroom::vroom('./Data/case_data.csv.gz') %>% 
+  mutate(pop_total = population,
+         lag3_avg_daily_temp = lag3_avg_min_daily_temp)
 
 MDR.adj <- "./Data/MDR.graph.commune"
 
