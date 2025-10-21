@@ -2,7 +2,7 @@
 
 mod1 <- 'obs_dengue_cases_hold ~ lag3_y+
          f(t, model="ar1") + f(fcodeID, model="iid") +
-         f(monthN, model="rw1", hyper=hyper2.rw, cyclic=TRUE, scale.model=TRUE, constr=TRUE, replicate=fcodeID2)'
+         f(monthN, model="rw1", hyper=hyper2.rw, cyclic=TRUE, scale.model=TRUE, constr=TRUE,replicate=fcodeID2)'# 
 
 
 

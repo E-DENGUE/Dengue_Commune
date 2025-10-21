@@ -97,7 +97,7 @@ inla_spacetime_mod <- function(vintage_date, modN, formula1='y ~ -1 +  X +   f(t
 
   
   c1.out <- c1 %>%
-    dplyr::select(date, fcode, severe_dengue_cases, forecast,horizon ) 
+    dplyr::select(date, fcode, obs_dengue_cases, forecast,horizon ) 
   
   out.list =  list ('ds'=c1.out, 'scores'=scores$crps3,'log.samps.inc'=scores$log.samps.inc,  'fixed.eff'=mod1$summary.fixed, 'waic'=mod1$waic,'form'=formula1)
   saveRDS(out.list,paste0('./Output/Results/Results_spacetime/', 'mod',modN,'_',vintage_date  ,'.rds' )   )
