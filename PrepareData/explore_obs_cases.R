@@ -308,3 +308,74 @@ mod1 <- inla(form4, data = mod_ds,  family = "poisson", offset=pop1,
 )    
 summary(mod1)
 
+
+commune_groups <- geo_joined %>%
+  dplyr::select(bi_class, l2_code) %>%
+  unique( ) %>%
+  as.data.frame() %>%
+  dplyr::select(bi_class, l2_code) %>%
+  mutate(l2_code=as.numeric(l2_code))
+
+vintage_date = as.Date('2022-08-01')
+
+aggregate_mod_ds <- mod_ds %>%
+  left_join(commune_groups, by='l2_code') %>%
+  group_by(bi_class, date) %>%
+  summarize( obs_dengue_cases = sum(obs_dengue_cases),
+             lag3_avg_min_daily_temp = mean(lag3_avg_min_daily_temp),
+             population = sum(population),
+             lag3_monthly_dtr = mean(lag3_monthly_dtr),
+             lag3_monthly_cum_ppt = mean(lag3_monthly_cum_ppt),
+             t = mean(t)
+             ) %>%
+  mutate(bi_class = as.factor(bi_class),
+         bi_class2 = as.numeric(bi_class),
+         monthN = month(date),
+         obs_dengue_cases_FIT = if_else(date >= vintage_date,NA_real_,obs_dengue_cases)
+  ) %>%
+  ungroup() %>%
+  filter(date <= vintage_date %m+% months(3))
+
+offset2 = aggregate_mod_ds$population/100000
+
+form5 <- as.formula(
+  'obs_dengue_cases_FIT~      #   lag3_monthly_dtr +
+                          lag3_avg_min_daily_temp +
+                          lag3_monthly_cum_ppt+
+                          #lag3_monthly_dtr * bi_class + 
+                          lag3_avg_min_daily_temp*bi_class +
+                          #lag3_monthly_cum_ppt * bi_class +
+                          bi_class + 
+                    f(t,   model="ar1", hyper = hyper.ar1,constr=TRUE, replicate=bi_class2) +
+                     f(monthN, model="rw1", hyper=hyper2.rw, cyclic=TRUE, scale.model=TRUE, constr=TRUE)
+                '
+)
+
+hyper2.rw = list(prec = list(prior='pc.prec', param=c(0.3, 0.01))) # medium
+
+mod2 <- inla(form5, data = aggregate_mod_ds,  family = "nbinomial", offset=offset2,
+             control.compute = list(dic = FALSE, 
+                                    waic = FALSE, 
+                                    config = T,
+                                    return.marginals=F
+             ),
+             # save predicted values on response scale
+             control.inla = list(strategy = 'simplified.laplace', cmin = 0.01),
+             control.fixed = list(mean.intercept=0, 
+                                  prec.intercept=1e-4, # precision 1
+                                  mean=0, 
+                                  prec=1), # weakly regularising on fixed effects (sd of 1)
+             inla.mode = "experimental", # new version of INLA algorithm (requires R 4.1 and INLA testing version)
+             num.threads=4
+)    
+summary(mod2)
+
+aggregate_mod_ds$pred_count <- exp(mod2$summary.linear.predictor$mean)
+
+
+aggregate_mod_ds %>%
+  ggplot(aes(x=date, y=obs_dengue_cases)) +
+  geom_line()+
+  geom_line(aes(x=date, y=pred_count), color='red') +
+  facet_wrap(~bi_class2)
+
