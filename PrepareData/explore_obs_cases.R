@@ -316,7 +316,7 @@ commune_groups <- geo_joined %>%
   dplyr::select(bi_class, l2_code) %>%
   mutate(l2_code=as.numeric(l2_code))
 
-vintage_date = as.Date('2022-08-01')
+vintage_date = as.Date('2024-05-01')
 
 aggregate_mod_ds <- mod_ds %>%
   left_join(commune_groups, by='l2_code') %>%
@@ -375,7 +375,7 @@ aggregate_mod_ds$pred_count <- exp(mod2$summary.linear.predictor$mean)
 
 aggregate_mod_ds %>%
   ggplot(aes(x=date, y=obs_dengue_cases)) +
-  geom_line()+
+  geom_point()+
   geom_line(aes(x=date, y=pred_count), color='red') +
   facet_wrap(~bi_class2)
 
