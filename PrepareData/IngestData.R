@@ -14,10 +14,7 @@ nb_list <- g$nbs
 province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
 
 # Read in case data
-a1 <- lapply(province_codes, function(X) readxl::read_excel('./Data/Dengue_observed_10_province/250905_ED_MONTHLY dengue case_10 provinces_2010-2024.xlsx', sheet=X)) %>%
-  bind_rows() %>%
-  rename(l2_code = l2_code_commune,
-         obs_dengue_cases = dengue ) %>%
+a1 <- read_csv('./Data/Dengue_observed_MDR/model_input_data_mdr_lev2.csv') %>%
   mutate(date = as.Date(paste(year, month, '01', sep='-'))) 
 
 # Which codes are present in dataset?
@@ -45,21 +42,19 @@ temp_data <- vroom::vroom('./Data/meteorological.csv.gz') %>%
   mutate(l2_code = as.numeric(l2_code)) %>%
   filter(date>='2010-01-01' &!is.na(fcode))
 
-## read in pop file
-pop <- st_read("./Data/Staging_shapefiles/mdr_boundary_level2_2025.geojson") %>%
-  as.data.frame() %>%
-  dplyr::select(l2_code,area, population) %>%
-  mutate(l2_code = as.numeric(l2_code),
-         pop_density = population/area/1000)
 
   
 #Combine meterological data and case data
 
 a2 <- a1 %>%
-  left_join(temp_data, by=c('l2_code','date')
-            ) %>%
-  left_join(pop, by=c('l2_code')) %>%
   filter(!is.na(fcode) & date>='2010-01-01') %>%
+  arrange(fcode, date) %>%
+  group_by(fcode) %>%
+  mutate(lag3_avg_min_daily_temp = lag(t2m_min,3),
+         lag3_monthly_cum_ppt = lag(tp_accum,3) ,
+         dtr = t2m_max - t2m_min, #not quite right--should do this daily then average
+         lag3_monthly_dtr = lag(dtr,3)
+  )%>%
   dplyr::select(date,fcode, l2_code,obs_dengue_cases ,lag3_avg_min_daily_temp,lag3_monthly_cum_ppt,lag3_monthly_dtr, population ) %>%
   arrange(fcode, date) %>%
   group_by(fcode) %>%
