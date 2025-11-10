@@ -11,7 +11,7 @@ nb_list <- g$nbs
 
 #Provinces to include in analysis
 
-province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
+#province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
 
 # Read in case data
 a1 <- read_csv('./Data/Dengue_observed_MDR/model_input_data_mdr_lev2.csv') %>%
