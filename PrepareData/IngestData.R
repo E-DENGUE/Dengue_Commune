@@ -5,6 +5,8 @@ library(sf)
 library(roll)
 library(spdep)
 
+source('./R/IngestMap.R' )
+
 # Read in neighbors
 g <- inla.read.graph("../Data/MDR.graph.commune")
 nb_list <- g$nbs
@@ -13,16 +15,16 @@ nb_list <- g$nbs
 
 #province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
 
+# Which codes are present in dataset?
+id_mapping_key <- vroom::vroom('../Data/inla_id_key2.csv') %>%
+  dplyr::select(fcode, l2_code)
+
 # Read in case data
 a1 <- read_csv('./Data/Dengue_observed_MDR/model_input_data_mdr_lev2.csv') %>%
-  mutate(date = as.Date(paste(year, month, '01', sep='-'))) 
-
-# Which codes are present in dataset?
-l2_code_keep <- a1 %>%
-  pull(l2_code) %>%
-  unique()
-
- source('./R/IngestMap.R' )
+  mutate(date = as.Date(paste(year, month, '01', sep='-'))) %>%
+  dplyr::select(-fcode) %>%
+  right_join( id_mapping_key, by='l2_code') %>% #only keeps observation if present on shape file
+  mutate(l2_code = as.character(l2_code))
 
 #lag3_avg_min_daily_temp, lag3_monthly_cum_ppt (cum_tp_accum)
 temp_data <- vroom::vroom('./Data/meteorological.csv.gz') %>%
@@ -71,7 +73,9 @@ a2 <- a1 %>%
             ((obs_dengue_cases+1)/population*100000)
       ), 
       12),
-    log_lag12_inc = (log_lag12_inc - mean(log_lag12_inc, na.rm=T))/sd(log_lag12_inc, na.rm=T)
+    log_lag12_inc = (log_lag12_inc - mean(log_lag12_inc, na.rm=T))/sd(log_lag12_inc, na.rm=T),
+    
+    fcodeID = fcode
     ) %>%
   ungroup()
 
