@@ -5,27 +5,26 @@ library(sf)
 library(roll)
 library(spdep)
 
+source('./R/IngestMap.R' )
+
 # Read in neighbors
 g <- inla.read.graph("../Data/MDR.graph.commune")
 nb_list <- g$nbs
 
 #Provinces to include in analysis
 
-province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
-
-# Read in case data
-a1 <- lapply(province_codes, function(X) readxl::read_excel('./Data/Dengue_observed_10_province/250905_ED_MONTHLY dengue case_10 provinces_2010-2024.xlsx', sheet=X)) %>%
-  bind_rows() %>%
-  rename(l2_code = l2_code_commune,
-         obs_dengue_cases = dengue ) %>%
-  mutate(date = as.Date(paste(year, month, '01', sep='-'))) 
+#province_codes <- c('BL','BT','CM','CT','HG','LA','KG','TG','TV','VL')
 
 # Which codes are present in dataset?
-l2_code_keep <- a1 %>%
-  pull(l2_code) %>%
-  unique()
+id_mapping_key <- vroom::vroom('../Data/inla_id_key2.csv') %>%
+  dplyr::select(fcode, l2_code)
 
- source('./R/IngestMap.R' )
+# Read in case data
+a1 <- read_csv('./Data/Dengue_observed_MDR/model_input_data_mdr_lev2.csv') %>%
+  mutate(date = as.Date(paste(year, month, '01', sep='-'))) %>%
+  dplyr::select(-fcode) %>%
+  right_join( id_mapping_key, by='l2_code') %>% #only keeps observation if present on shape file
+  mutate(l2_code = as.character(l2_code))
 
 #lag3_avg_min_daily_temp, lag3_monthly_cum_ppt (cum_tp_accum)
 temp_data <- vroom::vroom('./Data/meteorological.csv.gz') %>%
@@ -45,21 +44,19 @@ temp_data <- vroom::vroom('./Data/meteorological.csv.gz') %>%
   mutate(l2_code = as.numeric(l2_code)) %>%
   filter(date>='2010-01-01' &!is.na(fcode))
 
-## read in pop file
-pop <- st_read("./Data/Staging_shapefiles/mdr_boundary_level2_2025.geojson") %>%
-  as.data.frame() %>%
-  dplyr::select(l2_code,area, population) %>%
-  mutate(l2_code = as.numeric(l2_code),
-         pop_density = population/area/1000)
 
   
 #Combine meterological data and case data
 
 a2 <- a1 %>%
-  left_join(temp_data, by=c('l2_code','date')
-            ) %>%
-  left_join(pop, by=c('l2_code')) %>%
   filter(!is.na(fcode) & date>='2010-01-01') %>%
+  arrange(fcode, date) %>%
+  group_by(fcode) %>%
+  mutate(lag3_avg_min_daily_temp = lag(t2m_min,3),
+         lag3_monthly_cum_ppt = lag(tp_accum,3) ,
+         dtr = t2m_max - t2m_min, #not quite right--should do this daily then average
+         lag3_monthly_dtr = lag(dtr,3)
+  )%>%
   dplyr::select(date,fcode, l2_code,obs_dengue_cases ,lag3_avg_min_daily_temp,lag3_monthly_cum_ppt,lag3_monthly_dtr, population ) %>%
   arrange(fcode, date) %>%
   group_by(fcode) %>%
@@ -76,7 +73,9 @@ a2 <- a1 %>%
             ((obs_dengue_cases+1)/population*100000)
       ), 
       12),
-    log_lag12_inc = (log_lag12_inc - mean(log_lag12_inc, na.rm=T))/sd(log_lag12_inc, na.rm=T)
+    log_lag12_inc = (log_lag12_inc - mean(log_lag12_inc, na.rm=T))/sd(log_lag12_inc, na.rm=T),
+    
+    fcodeID = fcode
     ) %>%
   ungroup()
 
