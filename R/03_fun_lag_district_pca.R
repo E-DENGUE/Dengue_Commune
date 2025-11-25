@@ -52,9 +52,11 @@ lag_district_pca <- function(vintage_date, fcode.select, modN){
   # dplyr::select(-contains(fcode.select)) #filters out lags from the select fcode--fix this to work with tidy names
   
   ##Y-AWARE PCA
-      df2 <- c1b %>% filter( !is.na(ed_kien_giang_an_minh_district_log_df_lag4 ))
+      df2 <- c1b #%>% filter( !is.na(ed_kien_giang_an_minh_district_log_df_lag4 ))
       x <- df2[,names(all.lags)]
+      x <- x[-c(1:5),]
       Y <- df2$obs_dengue_cases_hold
+      Y <- Y[-c(1:5)]
       y.aware.scale<- apply(x[,-1], 2, function(x1){
         x1 <- as.vector(x1)
         log.y.pre.scale<- scale(log(Y+0.5))
@@ -78,6 +80,7 @@ lag_district_pca <- function(vintage_date, fcode.select, modN){
       pcs<-pca1$x
       pcs<- as.data.frame(apply(pcs,2, scale)) #SCALE THE PCS prior to regression!
       names(pcs) <- paste0('PC', 1:ncol(pcs))
+      df2 <- df2[-c(1:5),]
     pc.df <- cbind.data.frame('date'=df2$date, pcs[,1:n.pcs.keep])
   
     c1 <- c1b %>%
@@ -130,7 +133,8 @@ lag_district_pca <- function(vintage_date, fcode.select, modN){
                                      if_else(date== (vintage_date %m+% months(3)),3, 0
                              )
            )),
-           max_allowed_lag = 3
+           max_allowed_lag = 3,
+           fcodeID = fcode,
     )%>%
     filter(horizon <= max_allowed_lag) #get rid of lag2 if lag1 is included as covariate
   #View(c1 %>% dplyr::select(fcode, date,obs_dengue_cases_hold,Dengue_fever_rates,log_df_rate,lag_y,lag2_y, forecast, horizon)  %>% filter(date>=as.Date('2012-01-01')))

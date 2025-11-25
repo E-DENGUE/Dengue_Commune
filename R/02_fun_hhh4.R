@@ -24,7 +24,8 @@ hhh4_mod <- function(vintage_date, modN,max_horizon=3){
     group_by(fcode) %>%
     mutate( log_inc=log(( obs_dengue_cases+1)/ pop_total*100000),
             log_lag12_inc= scale(dplyr::lag(log_inc,12) )[,1] ) %>%
-    ungroup()
+    ungroup() %>% 
+    filter(date>'2010-03-01') # remove rows with NAs due to lag3 terms
   
   start.date <- min(c1$date)
   start.year <- lubridate::year(start.date)
@@ -38,13 +39,13 @@ hhh4_mod <- function(vintage_date, modN,max_horizon=3){
   cases <- c1.fit %>% 
     reshape2::dcast(date~fcode, value.var= 'obs_dengue_cases') %>%
     filter(date>=start.date) %>%
-    dplyr::select(unique(MDR_NEW$fcode))%>%
+    dplyr::select(unique(MDR_NEW$fcode)) %>%
     as.matrix()
   
   cases.fit <- c1.fit %>% 
     reshape2::dcast(date~fcode, value.var= 'obs_dengue_cases_fit') %>%
     filter(date>=start.date) %>%
-    dplyr::select(unique(MDR_NEW$fcode))%>%
+    dplyr::select(unique(MDR_NEW$fcode)) %>%
     as.matrix()
   
   pop_total <- c1.fit %>% 
