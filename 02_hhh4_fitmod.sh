@@ -1,24 +1,26 @@
 #!/bin/bash
-#SBATCH --time=01:04:00
+#SBATCH --time=24:00:00
 #SBATCH --mail-type=ALL
 #SBATCH --partition day,scavenge
 #SBATCH --requeue
-#SBATCH --mail-user=daniel.weinberger@yale.edu
+#SBATCH --mail-user=wong@mpiib-berlin.mpg.de
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=1G
 #SBATCH -o ./Report/output02/output02.%a.out # STDOUT
 #SBATCH -e ./Report/error02/error02.%a.out 
-#SBATCH --array=1-432  # If k models and J hold out time points this is 1- j*k  J=84, K=15
+#SBATCH --array=1-72  # If k models and J hold out time points this is 1- j*k  J=72, K=1
 
 
 #Define the number of models being tested
 
-N_models=6
+N_models=1
 
 #Load R
-module load  R/4.2.3-foss-2022b
+# module load R/4.2.0-foss-2020b
+module load R/4.4.1-foss-2022b
+# module load R-INLA/24.01.18-foss-2022b
 
-# J:1-108 time periods
+# J:1-120 time periods
 # K 1:N_models models
 
 # Use modulos to iterate through all task IDs

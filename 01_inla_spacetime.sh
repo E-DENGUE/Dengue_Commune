@@ -3,22 +3,28 @@
 #SBATCH --mail-type=ALL
 #SBATCH --partition day,scavenge
 #SBATCH --requeue
-#SBATCH --mail-user=daniel.weinberger@yale.edu
-#SBATCH --cpus-per-task=8
+#SBATCH --mail-user=wong@mpiib-berlin.mpg.de
+#SBATCH --cpus-per-task=30
 #SBATCH --mem-per-cpu=10G
 #SBATCH -o ./Report/output01/output01.%a.out # STDOUT
 #SBATCH -e ./Report/error01/error01.%a.out 
-#SBATCH --array=1-4392   # If k models and J hold out time points this is 1- j*k  J=84, K=15
+#SBATCH --array=1-288   # If k models and J hold out time points this is 1- j*k  J=72, K=4
 
 
 #Define the number of models being tested
 
-N_models=61
+N_models=4
 
 #Load R
-module load  R/4.2.3-foss-2022b
+# module load R/4.2.0-foss-2020b
+module load R/4.4.1-foss-2022b
+# module load R-INLA/24.01.18-foss-2022b
 
-# J:1-108 time periods
+# # Force INLA to use the working launcher (bypasses missing inla.mkl)
+# export INLA_CALL=/vast/palmer/apps/avx2/software/R-INLA/24.01.18-foss-2022b/INLA/bin/linux/64bit/inla.run
+
+
+# J:1-72 time periods
 # K 1:N_models models
 
 # Use modulos to iterate through all task IDs

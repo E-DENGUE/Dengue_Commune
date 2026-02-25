@@ -34,7 +34,7 @@ The code in this repository is intended to be run on an HPC.
 
 > salloc
 
-> module load R/4.2.0-foss-2020b
+> module load R/4.4.1-foss-2022b
 
 > R
 

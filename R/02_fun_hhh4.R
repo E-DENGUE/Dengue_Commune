@@ -304,7 +304,7 @@ hhh4_mod <- function(vintage_date, modN,max_horizon=3){
       ungroup() %>%
       mutate(
         forecast = if_else(date == (vintage_date %m+% months(h)), 1, 0),
-        horizon = if_else(date == (vintage_date %m+% months(h)), h, 0)
+        horizon = if_else(date == (vintage_date %m+% months(h)), h, 0L)
       ) 
     
     

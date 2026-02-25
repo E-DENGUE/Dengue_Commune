@@ -32,7 +32,8 @@ d2<-  vroom::vroom('./Data/case_data.csv.gz') %>%
 
 MDR.adj <- "./Data/MDR.graph.commune"
 
-date.test2 <- as.Date(max(d2$date%m-% months(3)))
+# date.test2 <- as.Date(max(d2$date%m-% months(3)))
+date.test2 <- seq.Date(from=as.Date('2018-10-01'), as.Date('2024-09-01') , by='month')
 
 # MDR_NEW <- readRDS( './Data/MDR_NEW.rds')
 # 
@@ -46,7 +47,7 @@ g <- inla.read.graph("./Data/MDR.graph.commune")
 all.fcodes <- unique(d2$fcode)
 
 hyper.besag =   hyper = list(prec = list(prior = "loggamma",
-                                          param = c(1, 1), initial = 0.01))
+                                         param = c(1, 1), initial = 0.01))
 
 hyper1 = list(prec.unstruct=list(prior='pc.prec',param=c(3, 0.01)),
               prec.spatial=list(prior='pc.prec', param=c(3, 0.01)))
@@ -73,5 +74,4 @@ hyper1.rw = list(prec = list(prior='pc.prec', param=c(0.1, 0.01))) # strictest s
 hyper2.rw = list(prec = list(prior='pc.prec', param=c(0.3, 0.01))) # medium
 hyper3.rw = list(prec = list(prior='pc.prec', param=c(1, 0.01))) # weaker (suggested INLA default) 
 hyper4.rw = list(prec = list(prior='pc.prec', param=c(2, 0.01))) # weakest; sd can be quite wide 
-
 
